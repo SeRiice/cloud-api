@@ -1,0 +1,10 @@
+version: "3.9"
+services:
+  back-end:
+    build: .
+    ports:
+      - "8081:8081"
+  front-end:
+    build: ~/Cloud/Imad-aws/angular/.
+    ports:
+      - "4200:80"

@@ -9,7 +9,26 @@ const app = express()
 app.use(cors())
 app.use(express.json())
 
-let database = []
+let database = [
+  {
+    id: 1,
+    firstName: "Bruno",
+    lastName: "Gomes",
+    emailId: "bruno@gmail.com",
+  },
+  {
+    id: 2,
+    firstName: "Julien",
+    lastName: "Hamel",
+    emailId: "julien@gmail.com",
+  },
+  {
+    id: 3,
+    firstName: "Anoir",
+    lastName: "Adelin",
+    emailId: "anoir@gmail.com",
+  },
+]
 
 const log = (req) => {
   console.log(`${req.method} ${req.path}`)
