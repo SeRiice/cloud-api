@@ -9,74 +9,57 @@ const app = express()
 app.use(cors())
 app.use(express.json())
 
+let database = []
+
 const log = (req) => {
   console.log(`${req.method} ${req.path}`)
 }
 
-const formatEmployee = (employee) => {
-  return {
-    id: employee.id,
-    firstName: employee.firstName,
-    lastName: employee.lastName,
-    emailId: employee.emailId,
-  }
+const findEmployee = (id) => {
+  let employeeFind = null
+  let employeeIndex = null
+
+  database.forEach((employee, index) => {
+    if (employee.id === Number(id)) {
+      employeeFind = { ...employee }
+      employeeIndex = index
+    }
+  })
+
+  return [employeeFind, employeeIndex]
 }
 
 app.get("/api/v1/employees/", async (req, res) => {
   log(req)
-  await mongoose.connect("mongodb://localhost:27017/cloud")
 
-  const employees = await EmployeeModel.find({})
-
-  let formatedEmployees = []
-  employees.forEach((employee) => {
-    formatedEmployees.push(formatEmployee(employee))
-  })
-
-  await mongoose.disconnect()
-
-  res.send(formatedEmployees)
+  res.send(database)
 })
 
 app.get("/api/v1/employees/:id", async (req, res) => {
   log(req)
   const { id } = req.params
 
-  await mongoose.connect("mongodb://localhost:27017/cloud")
+  const employee = findEmployee(id)
 
-  try {
-    const employee = await EmployeeModel.findOne({ id })
-    await mongoose.disconnect()
-
-    employee
-      ? res.send(formatEmployee(employee))
-      : res.status(404).send({ error: "Employee not found" })
-  } catch (err) {
-    await mongoose.disconnect()
-    res.status(404).send({ error: "Employee not found" })
-
-    return
-  }
+  employee[0]
+    ? res.send(employee[0])
+    : res.status(404).send({ error: "Employee not found" })
 })
 
 app.post("/api/v1/employees/", async (req, res) => {
   log(req)
   const { firstName, lastName, emailId } = req.body
 
-  await mongoose.connect("mongodb://localhost:27017/cloud")
-
-  const lastEmployee = await EmployeeModel.find({}).sort({ id: -1 }).limit(1)
-
-  const newEmployee = await EmployeeModel.create({
-    id: lastEmployee.length > 0 ? lastEmployee[0].id + 1 : 1,
+  const newEmployee = {
+    id: database.length > 0 ? database[database.length - 1]["id"] + 1 : 1,
     firstName,
     lastName,
     emailId,
-  })
+  }
 
-  await mongoose.disconnect()
+  database.push(newEmployee)
 
-  res.send(formatEmployee(newEmployee))
+  res.send(newEmployee)
 })
 
 app.put("/api/v1/employees/:id", async (req, res) => {
@@ -84,55 +67,47 @@ app.put("/api/v1/employees/:id", async (req, res) => {
   const { id } = req.params
   const { lastName, firstName, emailId } = req.body
 
-  await mongoose.connect("mongodb://localhost:27017/cloud")
+  const employee = findEmployee(id)
 
-  try {
-    const employee = await EmployeeModel.findOne({ id })
-
-    const updatedEmployee = {
-      id: employee.id,
-      lastName: lastName ?? employee.lastName,
-      firstName: firstName ?? employee.firstName,
-      emailId: emailId ?? employee.emailId,
-    }
-
-    await EmployeeModel.updateOne({ id }, updatedEmployee)
-
-    await mongoose.disconnect()
-
-    employee
-      ? res.send(formatEmployee(updatedEmployee))
-      : res.status(404).send({ error: "Employee not found" })
-  } catch (err) {
-    await mongoose.disconnect()
-
+  if (!employee[0]) {
     res.status(404).send({ error: "Employee not found" })
 
     return
   }
+
+  const updatedEmployee = {
+    id: employee[0].id,
+    firstName: firstName ?? employee[0].firstName,
+    lastName: lastName ?? employee[0].lastName,
+    emailId: emailId ?? employee[0].emailId,
+  }
+
+  database[employee[1]] = updatedEmployee
+
+  employee[0]
+    ? res.send(updatedEmployee)
+    : res.status(404).send({ error: "Employee not found" })
 })
 
 app.delete("/api/v1/employees/:id", async (req, res) => {
   log(req)
   const { id } = req.params
 
-  await mongoose.connect("mongodb://localhost:27017/cloud")
+  const employee = findEmployee(id)
 
-  try {
-    const employee = await EmployeeModel.findOne({ id })
-
-    await EmployeeModel.deleteOne({ id })
-    await mongoose.disconnect()
-
-    employee
-      ? res.send(formatEmployee(employee))
-      : res.status(404).send({ error: "Employee not found" })
-  } catch (err) {
-    await mongoose.disconnect()
+  if (!employee[0]) {
     res.status(404).send({ error: "Employee not found" })
 
     return
   }
+
+  database = [
+    ...database.filter((employee) => {
+      return employee.id !== Number(id)
+    }),
+  ]
+
+  res.send(employee[0])
 })
 
 app.listen(PORT, () => {
